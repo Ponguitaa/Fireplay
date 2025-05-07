@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_RAWG_API_URL;
+// Provide default values if environment variables are not set
+const API_URL = process.env.NEXT_PUBLIC_RAWG_API_URL || 'https://api.rawg.io/api';
 const API_KEY = process.env.NEXT_PUBLIC_RAWG_API_KEY;
 
 interface GameQueryParams {
@@ -16,8 +17,13 @@ interface GameQueryParams {
 
 export async function getGames(params: GameQueryParams = {}) {
   try {
+    if (!API_KEY) {
+      console.error('RAWG API key is not configured. Please add NEXT_PUBLIC_RAWG_API_KEY to your .env.local file');
+      return { results: [], count: 0, next: null, previous: null };
+    }
+
     const queryParams = new URLSearchParams({
-      key: API_KEY || '',
+      key: API_KEY,
       ...params,
       page_size: params.page_size?.toString() || '20'
     });

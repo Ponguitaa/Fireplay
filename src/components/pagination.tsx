@@ -21,83 +21,70 @@ export default function Pagination({ currentPage, totalPages, getPageUrl }: Pagi
       items.push('...');
     }
     
-    // Mostrar páginas alrededor de la actual
-    for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
-      if (!items.includes(i)) {
+    // Mostrar páginas alrededor de la página actual
+    for (let i = Math.max(2, currentPage - 1); i <= Math.min(currentPage + 1, totalPages - 1); i++) {
+      if (i <= totalPages && !items.includes(i)) {
         items.push(i);
       }
     }
     
-    // Mostrar puntos suspensivos si es necesario
+    // Mostrar puntos suspensivos al final si es necesario
     if (currentPage < totalPages - 2) {
       items.push('...');
     }
     
-    // Siempre mostrar última página
-    if (totalPages > 1) {
+    // Siempre mostrar la última página si hay más de una página
+    if (totalPages > 1 && !items.includes(totalPages)) {
       items.push(totalPages);
     }
     
     return items;
   };
-  
+
   const paginationItems = generatePaginationItems();
-  
+
   return (
-    <nav className="flex justify-center items-center space-x-2 my-8">
-      {/* Botón Anterior */}
-      {currentPage > 1 ? (
-        <Link
-          href={getPageUrl(currentPage - 1)}
-          className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-        >
-          Anterior
-        </Link>
-      ) : (
-        <button
-          disabled
-          className="px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-700 rounded-md text-sm font-medium text-gray-400 dark:text-gray-500 cursor-not-allowed"
-        >
-          Anterior
-        </button>
-      )}
-      
-      {/* Números de página */}
-      {paginationItems.map((item, index) => (
-        <div key={index}>
-          {item === '...' ? (
-            <span className="px-3 py-2 text-gray-500 dark:text-gray-400">...</span>
+    <div className="flex justify-center my-6">
+      <div className="flex items-center gap-2">
+        {currentPage > 1 && (
+          <Link
+            href={getPageUrl(currentPage - 1)}
+            className="px-3 py-1 border rounded-md hover:bg-gray-100"
+            aria-label="Previous page"
+          >
+            &lt;
+          </Link>
+        )}
+        
+        {paginationItems.map((item, index) => (
+          item === '...' ? (
+            <span key={`ellipsis-${index}`} className="px-3 py-1">...</span>
           ) : (
             <Link
-              href={getPageUrl(item as number)}
-              className={`px-3 py-2 rounded-md text-sm font-medium ${
-                currentPage === item
-                  ? 'bg-[var(--color-primary)] text-white'
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-700'
+              key={`page-${item}`}
+              href={getPageUrl(Number(item))}
+              className={`px-3 py-1 border rounded-md ${
+                currentPage === item 
+                  ? 'bg-blue-600 text-white' 
+                  : 'hover:bg-gray-100'
               }`}
+              aria-current={currentPage === item ? 'page' : undefined}
             >
               {item}
             </Link>
-          )}
-        </div>
-      ))}
-      
-      {/* Botón Siguiente */}
-      {currentPage < totalPages ? (
-        <Link
-          href={getPageUrl(currentPage + 1)}
-          className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-        >
-          Siguiente
-        </Link>
-      ) : (
-        <button
-          disabled
-          className="px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-700 rounded-md text-sm font-medium text-gray-400 dark:text-gray-500 cursor-not-allowed"
-        >
-          Siguiente
-        </button>
-      )}
-    </nav>
+          )
+        ))}
+        
+        {currentPage < totalPages && (
+          <Link
+            href={getPageUrl(currentPage + 1)}
+            className="px-3 py-1 border rounded-md hover:bg-gray-100"
+            aria-label="Next page"
+          >
+            &gt;
+          </Link>
+        )}
+      </div>
+    </div>
   );
 }

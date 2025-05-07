@@ -1,8 +1,9 @@
 'use client';
 
 import { GameDetails } from '@/types/games.types';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/auth-context';
+import { useCart } from '@/context/cart-context';
 import { useRouter } from 'next/navigation';
 import Rating from './rating';
 
@@ -12,7 +13,10 @@ interface ProductPurchaseInfoProps {
 
 export default function ProductPurchaseInfo({ game }: ProductPurchaseInfoProps) {
   const [loading, setLoading] = useState(false);
+  const [price, setPrice] = useState<string>("0.00");
+  const [isInCart, setIsInCart] = useState(false);
   const { user } = useAuth();
+  const { addToCart, removeFromCart, isInCart: checkIsInCart } = useCart();
   const router = useRouter();
   
   // Generar un precio ficticio basado en aspectos del juego
@@ -61,12 +65,19 @@ export default function ProductPurchaseInfo({ game }: ProductPurchaseInfoProps) 
     return Math.max(4.99, basePrice).toFixed(2);
   };
   
-  const price = generateFictitiousPrice();
+  useEffect(() => {
+    const calculatedPrice = generateFictitiousPrice();
+    setPrice(calculatedPrice);
+    
+    // Comprobar si el juego ya está en el carrito
+    setIsInCart(checkIsInCart(game.id));
+  }, [game, checkIsInCart]);
+  
   const hasDiscount = parseFloat(price) < 59.99;
   const originalPrice = hasDiscount ? (parseFloat(price) * 1.25).toFixed(2) : null;
   
-  // Función para añadir el juego al carrito
-  const handleAddToCart = () => {
+  // Función para manejar la adición/eliminación del carrito
+  const handleCartAction = () => {
     setLoading(true);
     
     // Si el usuario no está autenticado, redirigir a la página de login
@@ -75,12 +86,21 @@ export default function ProductPurchaseInfo({ game }: ProductPurchaseInfoProps) 
       return;
     }
     
-    // Simular añadir al carrito con un timeout
+    // Añadir o quitar del carrito según corresponda
     setTimeout(() => {
+      if (isInCart) {
+        removeFromCart(game.id);
+        setIsInCart(false);
+      } else {
+        addToCart(game, parseFloat(price));
+        setIsInCart(true);
+      }
       setLoading(false);
-      // Aquí iría la lógica real para añadir al carrito
-      alert(`${game.name} se ha añadido al carrito`);
-    }, 800);
+    }, 500);
+  };
+  
+  const handleGoToCart = () => {
+    router.push('/cart');
   };
   
   const getStockStatus = () => {
@@ -143,29 +163,55 @@ export default function ProductPurchaseInfo({ game }: ProductPurchaseInfoProps) 
         </div>
       </div>
       
-      {/* Botón de añadir al carrito */}
-      <button
-        onClick={handleAddToCart}
-        disabled={loading}
-        className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-md font-medium transition-colors flex items-center justify-center disabled:opacity-75"
-      >
-        {loading ? (
-          <>
-            <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Añadiendo...
-          </>
-        ) : (
-          <>
+      {/* Botones de compra */}
+      <div className="space-y-3">
+        {/* Botón de añadir/quitar del carrito */}
+        <button
+          onClick={handleCartAction}
+          disabled={loading}
+          className={`w-full py-3 rounded-md font-medium transition-colors flex items-center justify-center disabled:opacity-75
+            ${isInCart 
+              ? 'bg-red-600 hover:bg-red-700 text-white' 
+              : 'bg-green-600 hover:bg-green-700 text-white'}`}
+        >
+          {loading ? (
+            <>
+              <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Procesando...
+            </>
+          ) : isInCart ? (
+            <>
+              <svg className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              Quitar del carrito
+            </>
+          ) : (
+            <>
+              <svg className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
+              </svg>
+              Añadir al carrito
+            </>
+          )}
+        </button>
+        
+        {/* Botón ir al carrito (solo visible si hay productos en el carrito) */}
+        {isInCart && (
+          <button
+            onClick={handleGoToCart}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-md font-medium transition-colors flex items-center justify-center"
+          >
             <svg className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
             </svg>
-            Añadir al carrito
-          </>
+            Ir al carrito
+          </button>
         )}
-      </button>
+      </div>
       
       {/* Información adicional */}
       <div className="mt-4 text-xs text-gray-500 space-y-2">

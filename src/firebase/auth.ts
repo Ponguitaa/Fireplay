@@ -5,6 +5,10 @@ import {
   updateProfile,
   User,
   UserCredential,
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updateEmail,
 } from "firebase/auth";
 import { auth } from "./firebase";
 
@@ -19,6 +23,19 @@ export interface RegisterData {
 export interface LoginData {
   email: string;
   password: string;
+}
+
+// Tipo para los datos de actualización de perfil
+export interface UpdateProfileData {
+  displayName?: string;
+  photoURL?: string;
+  email?: string;
+}
+
+// Tipo para los datos de cambio de contraseña
+export interface ChangePasswordData {
+  currentPassword: string;
+  newPassword: string;
 }
 
 /**
@@ -61,6 +78,68 @@ export const logoutUser = async (): Promise<void> => {
     await signOut(auth);
   } catch (error: any) {
     const errorMessage = error.message || "Error al cerrar sesión";
+    throw new Error(errorMessage);
+  }
+};
+
+/**
+ * Actualiza el perfil del usuario actual
+ */
+export const updateUserProfile = async (data: UpdateProfileData): Promise<void> => {
+  try {
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error("No hay un usuario autenticado");
+    
+    // Actualizar el perfil (nombre, foto)
+    if (data.displayName || data.photoURL) {
+      await updateProfile(currentUser, {
+        displayName: data.displayName || currentUser.displayName,
+        photoURL: data.photoURL || currentUser.photoURL,
+      });
+    }
+    
+    // Actualizar email (requiere reautenticación)
+    if (data.email && data.email !== currentUser.email) {
+      await updateEmail(currentUser, data.email);
+    }
+    
+  } catch (error: any) {
+    const errorMessage = error.message || "Error al actualizar el perfil";
+    throw new Error(errorMessage);
+  }
+};
+
+/**
+ * Reautentica al usuario actual (necesario para operaciones sensibles)
+ */
+export const reauthenticateUser = async (password: string): Promise<void> => {
+  try {
+    const currentUser = auth.currentUser;
+    if (!currentUser || !currentUser.email) throw new Error("No hay un usuario autenticado");
+    
+    const credential = EmailAuthProvider.credential(currentUser.email, password);
+    await reauthenticateWithCredential(currentUser, credential);
+  } catch (error: any) {
+    const errorMessage = error.message || "Error al reautenticar";
+    throw new Error(errorMessage);
+  }
+};
+
+/**
+ * Cambia la contraseña del usuario actual
+ */
+export const changeUserPassword = async ({ currentPassword, newPassword }: ChangePasswordData): Promise<void> => {
+  try {
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error("No hay un usuario autenticado");
+    
+    // Primero reautenticar al usuario
+    await reauthenticateUser(currentPassword);
+    
+    // Luego cambiar la contraseña
+    await updatePassword(currentUser, newPassword);
+  } catch (error: any) {
+    const errorMessage = error.message || "Error al cambiar la contraseña";
     throw new Error(errorMessage);
   }
 };
